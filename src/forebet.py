@@ -5,13 +5,18 @@ headers (HTTP 403), so we send a browser User-Agent. Returns each match's
 predicted correct score keyed by canonical team names so it can be lined up with
 our own fixtures.
 """
+import os
 import re
+import json
 import html
+import datetime
 import unicodedata
 
 import requests
 
 URL = "https://www.forebet.com/en/predictions-world/world-cup"
+CACHE_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)),
+                          "data", "forebet_cache.json")
 _HEADERS = {
     "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:128.0) Gecko/20100101 Firefox/128.0",
     "Accept-Language": "en-US,en;q=0.9",
@@ -62,12 +67,44 @@ def parse(page):
     return out
 
 
+def _save_cache(data):
+    os.makedirs(os.path.dirname(CACHE_PATH), exist_ok=True)
+    payload = {
+        "fetched_at": datetime.datetime.now().isoformat(timespec="seconds"),
+        "matches": [[h, a, s] for (h, a), s in data.items()],
+    }
+    with open(CACHE_PATH, "w", encoding="utf-8") as f:
+        json.dump(payload, f, ensure_ascii=False, indent=0)
+
+
+def _load_cache():
+    if not os.path.exists(CACHE_PATH):
+        return None, None
+    with open(CACHE_PATH, encoding="utf-8") as f:
+        payload = json.load(f)
+    data = {(h, a): s for h, a, s in payload["matches"]}
+    return data, payload.get("fetched_at")
+
+
 def predictions(timeout=25):
-    """Fetch + parse. Returns the score dict, or raises on network/parse failure."""
-    data = parse(fetch_html(timeout=timeout))
-    if not data:
-        raise ValueError("no Forebet predictions parsed (page layout may have changed)")
-    return data
+    """Fetch + parse Forebet, caching the result to data/forebet_cache.json.
+
+    Returns (score_dict, meta) where meta = {"source": "live"|"cache",
+    "fetched_at": iso-timestamp}. On a live failure, falls back to the cached
+    pull if one exists; only raises if there is no cache to fall back to.
+    """
+    try:
+        data = parse(fetch_html(timeout=timeout))
+        if not data:
+            raise ValueError("no Forebet predictions parsed (page layout may have changed)")
+        _save_cache(data)
+        return data, {"source": "live",
+                      "fetched_at": datetime.datetime.now().isoformat(timespec="seconds")}
+    except Exception as live_err:
+        cached, ts = _load_cache()
+        if cached:
+            return cached, {"source": "cache", "fetched_at": ts, "error": str(live_err)}
+        raise
 
 
 def lookup(data, home, away):

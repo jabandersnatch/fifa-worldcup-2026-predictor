@@ -6,3 +6,4 @@ data/goalscorers.csv
 data/predictions_upcoming.csv
 data/simulation_odds.csv
 data/golden_boot.csv
+data/forebet_cache.json

@@ -64,14 +64,18 @@ def cmd_predict(args):
     upcoming = wc[~wc["played"]]
 
     fb = None
+    fb_src = ""
     if args.compare_forebet:
         from src import forebet
         try:
             print("Fetching Forebet predictions for corroboration…", file=sys.stderr)
-            fb = forebet.predictions()
-            print(f"  got {len(fb)} Forebet match predictions.", file=sys.stderr)
-        except Exception as e:                       # network/layout failure
-            print(f"  Forebet unavailable ({e}); showing our model only.", file=sys.stderr)
+            fb, meta = forebet.predictions()
+            fb_src = ("live" if meta["source"] == "live"
+                      else f"cached {meta['fetched_at']}")
+            print(f"  {len(fb)} Forebet predictions ({fb_src}).", file=sys.stderr)
+        except Exception as e:                       # no live data and no cache
+            print(f"  Forebet unavailable and no cache ({e}); showing our model only.",
+                  file=sys.stderr)
 
     rows = []
     agree = total = 0
@@ -107,8 +111,8 @@ def cmd_predict(args):
     out = pd.DataFrame(rows)
     print(tabulate(out, headers="keys", showindex=False, tablefmt="github"))
     if fb is not None and total:
-        print(f"\nForebet corroboration: same predicted result in {agree}/{total} "
-              f"matches ({agree/total*100:.0f}%).")
+        print(f"\nForebet ({fb_src}) corroboration: same predicted result in "
+              f"{agree}/{total} matches ({agree/total*100:.0f}%).")
     csv = os.path.join(DATA_DIR, "predictions_upcoming.csv")
     out.to_csv(csv, index=False)
     print(f"Saved {len(out)} predictions → {csv}")
