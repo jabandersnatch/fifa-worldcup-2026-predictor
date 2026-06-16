@@ -63,6 +63,24 @@ def cmd_predict(args):
     wc = data_loader.wc2026_matches()
     upcoming = wc[~wc["played"]]
 
+    # confirmed/expected lineups -> per-team attack multipliers
+    import json as _json
+    from src import lineups
+    mults = {}
+    lpath = os.path.join(DATA_DIR, "lineups.json")
+    if os.path.exists(lpath):
+        store = _json.load(open(lpath))
+        for team, xi in store.items():
+            if team.startswith("_"):
+                continue
+            m, missing = lineups.attack_multiplier(team, xi)
+            mults[team] = (m, missing)
+            if m < 1.0:
+                miss = ", ".join(f"{n} -{s*100:.0f}%" for n, s in missing)
+                print(f"Lineup applied: {team} attack ×{m:.2f} (out: {miss})", file=sys.stderr)
+            else:
+                print(f"Lineup applied: {team} full-strength (×1.00)", file=sys.stderr)
+
     fb = None
     fb_src = ""
     if args.compare_forebet:
@@ -83,7 +101,10 @@ def cmd_predict(args):
         neutral = bool(r.neutral)
         if r.home_team in config.HOSTS and r.country == r.home_team:
             neutral = False
-        p = predictor.predict(r.home_team, r.away_team, neutral=neutral, city=r.city)
+        mh = mults.get(r.home_team, (1.0, []))[0]
+        ma = mults.get(r.away_team, (1.0, []))[0]
+        p = predictor.predict(r.home_team, r.away_team, neutral=neutral, city=r.city,
+                              mult_home=mh, mult_away=ma)
         top3 = " · ".join(f"{h}-{a} {pr*100:.0f}%" for h, a, pr in p["top_scores"][:3])
         ours = f"{p['ml_home']}-{p['ml_away']}"
         row = {

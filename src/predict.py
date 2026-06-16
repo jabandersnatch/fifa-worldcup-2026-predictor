@@ -80,16 +80,19 @@ class Predictor:
         return float(np.tril(mat, -1).sum()), float(np.trace(mat)), float(np.triu(mat, 1).sum())
 
     # --- full prediction --------------------------------------------------
-    def predict(self, home, away, neutral=True, max_goals=10, city=None):
+    def predict(self, home, away, neutral=True, max_goals=10, city=None,
+                mult_home=1.0, mult_away=1.0):
+        # mult_home/away: optional lineup-based attack multipliers (1.0 = full strength)
         lam, mu = self.blended_lambdas(home, away, neutral, city)
+        lam = max(lam * mult_home, 0.05); mu = max(mu * mult_away, 0.05)
         mat = self._matrix(lam, mu, max_goals)                 # point-prediction matrix
         ph_l, pd_l, pa_l = self._outcome(mat)
 
         # probability-blend branch: raw DC outcome probs blended with Elo 3-way
         lam0, mu0 = self.dc.expected_goals(home, away, neutral)
         adj0 = environment.altitude_supremacy(home, away, city, neutral) if city else 0.0
-        mat0 = self._matrix(max(lam0 * self.goal_scale + adj0 / 2, 0.05),
-                            max(mu0 * self.goal_scale - adj0 / 2, 0.05), max_goals)
+        mat0 = self._matrix(max((lam0 * self.goal_scale + adj0 / 2) * mult_home, 0.05),
+                            max((mu0 * self.goal_scale - adj0 / 2) * mult_away, 0.05), max_goals)
         ph_p, pd_p, pa_p = self._outcome(mat0)
         w = self.elo_weight
         if w > 0 and home in self.elo and away in self.elo:
