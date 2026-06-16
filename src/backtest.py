@@ -33,7 +33,7 @@ def _eval_window(df, start, end, elo_weight):
     for r in test.itertuples(index=False):
         if r.home_team not in dc.idx or r.away_team not in dc.idx:
             continue
-        p = pred.predict(r.home_team, r.away_team, neutral=bool(r.neutral))
+        p = pred.predict(r.home_team, r.away_team, neutral=bool(r.neutral), city=r.city)
         probs = np.array([p["p_home"], p["p_draw"], p["p_away"]])
         a = 0 if r.home_score > r.away_score else (1 if r.home_score == r.away_score else 2)
         s["correct"] += int(np.argmax(probs) == a)

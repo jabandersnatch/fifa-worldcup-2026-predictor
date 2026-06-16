@@ -83,7 +83,7 @@ def cmd_predict(args):
         neutral = bool(r.neutral)
         if r.home_team in config.HOSTS and r.country == r.home_team:
             neutral = False
-        p = predictor.predict(r.home_team, r.away_team, neutral=neutral)
+        p = predictor.predict(r.home_team, r.away_team, neutral=neutral, city=r.city)
         top3 = " · ".join(f"{h}-{a} {pr*100:.0f}%" for h, a, pr in p["top_scores"][:3])
         ours = f"{p['ml_home']}-{p['ml_away']}"
         row = {

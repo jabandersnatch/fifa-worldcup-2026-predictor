@@ -12,6 +12,7 @@ import numpy as np
 from scipy.stats import poisson
 
 from . import elo
+from . import environment
 
 
 class Predictor:
@@ -32,8 +33,9 @@ class Predictor:
         self.goal_scale = goal_scale
 
     # --- goal expectation -------------------------------------------------
-    def blended_lambdas(self, home, away, neutral=True):
-        """Dixon-Coles expected goals with the supremacy blended toward Elo."""
+    def blended_lambdas(self, home, away, neutral=True, city=None):
+        """Dixon-Coles expected goals with the supremacy blended toward Elo, then
+        an altitude supremacy shift if the venue (city) is at elevation."""
         lam, mu = self.dc.expected_goals(home, away, neutral)
         w = self.elo_weight
         if w > 0 and home in self.elo and away in self.elo:
@@ -44,11 +46,18 @@ class Predictor:
             sup = (1 - w) * (lam - mu) + w * sup_elo
             lam = max((total + sup) / 2, 0.05)
             mu = max((total - sup) / 2, 0.05)
-        return lam * self.goal_scale, mu * self.goal_scale
+        lam *= self.goal_scale
+        mu *= self.goal_scale
+        if city is not None:
+            adj = environment.altitude_supremacy(home, away, city, neutral)
+            if adj:
+                lam = max(lam + adj / 2, 0.05)
+                mu = max(mu - adj / 2, 0.05)
+        return lam, mu
 
     # alias kept for callers that want expected goals
-    def expected_goals(self, home, away, neutral=True):
-        return self.blended_lambdas(home, away, neutral)
+    def expected_goals(self, home, away, neutral=True, city=None):
+        return self.blended_lambdas(home, away, neutral, city)
 
     def _matrix(self, lam, mu, max_goals=10):
         gh = np.arange(max_goals + 1)
@@ -61,9 +70,9 @@ class Predictor:
         mat = np.clip(mat, 0, None)
         return mat / mat.sum()
 
-    def score_matrix(self, home, away, neutral=True, max_goals=10):
+    def score_matrix(self, home, away, neutral=True, max_goals=10, city=None):
         """Blended P(home=x, away=y) matrix used for predictions and sampling."""
-        lam, mu = self.blended_lambdas(home, away, neutral)
+        lam, mu = self.blended_lambdas(home, away, neutral, city)
         return self._matrix(lam, mu, max_goals)
 
     @staticmethod
@@ -71,14 +80,16 @@ class Predictor:
         return float(np.tril(mat, -1).sum()), float(np.trace(mat)), float(np.triu(mat, 1).sum())
 
     # --- full prediction --------------------------------------------------
-    def predict(self, home, away, neutral=True, max_goals=10):
-        lam, mu = self.blended_lambdas(home, away, neutral)
+    def predict(self, home, away, neutral=True, max_goals=10, city=None):
+        lam, mu = self.blended_lambdas(home, away, neutral, city)
         mat = self._matrix(lam, mu, max_goals)                 # point-prediction matrix
         ph_l, pd_l, pa_l = self._outcome(mat)
 
         # probability-blend branch: raw DC outcome probs blended with Elo 3-way
         lam0, mu0 = self.dc.expected_goals(home, away, neutral)
-        mat0 = self._matrix(lam0 * self.goal_scale, mu0 * self.goal_scale, max_goals)
+        adj0 = environment.altitude_supremacy(home, away, city, neutral) if city else 0.0
+        mat0 = self._matrix(max(lam0 * self.goal_scale + adj0 / 2, 0.05),
+                            max(mu0 * self.goal_scale - adj0 / 2, 0.05), max_goals)
         ph_p, pd_p, pa_p = self._outcome(mat0)
         w = self.elo_weight
         if w > 0 and home in self.elo and away in self.elo:
@@ -105,10 +116,10 @@ class Predictor:
             "p_home": ph, "p_draw": pd_, "p_away": pa,
         }
 
-    def knockout_win_prob(self, home, away, neutral=True):
+    def knockout_win_prob(self, home, away, neutral=True, city=None):
         """P(home advances): regulation win plus the draw mass resolved by an
         Elo-tilted-but-regressed extra-time/penalty model."""
-        pred = self.predict(home, away, neutral)
+        pred = self.predict(home, away, neutral, city=city)
         if home in self.elo and away in self.elo:
             eh, _, ea = elo.outcome_probs(self.elo[home], self.elo[away], neutral)
             two_way = eh / (eh + ea) if (eh + ea) else 0.5

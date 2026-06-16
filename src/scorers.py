@@ -28,7 +28,7 @@ def _team_future_goals(predictor, sim_result, wc_matches):
         neutral = bool(r.neutral)
         if r.home_team in config.HOSTS and r.country == r.home_team:
             neutral = False
-        lam, mu = predictor.expected_goals(r.home_team, r.away_team, neutral)
+        lam, mu = predictor.expected_goals(r.home_team, r.away_team, neutral, city=r.city)
         rem_xg[r.home_team] = rem_xg.get(r.home_team, 0.0) + lam
         rem_xg[r.away_team] = rem_xg.get(r.away_team, 0.0) + mu
 

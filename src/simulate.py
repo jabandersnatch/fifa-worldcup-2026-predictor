@@ -63,15 +63,15 @@ class Tournament:
                 self.played.append((r.home_team, r.away_team,
                                     int(r.home_score), int(r.away_score)))
             else:
-                self.remaining.append((r.home_team, r.away_team, neutral))
+                self.remaining.append((r.home_team, r.away_team, neutral, r.city))
 
         # Pre-sample scorelines for every remaining group fixture (vectorized).
         self._presample = {}
 
     def _prepare_samples(self, n_sims):
         max_goals = 10
-        for (h, a, neutral) in self.remaining:
-            mat = self.predictor.score_matrix(h, a, neutral, max_goals).ravel()
+        for (h, a, neutral, city) in self.remaining:
+            mat = self.predictor.score_matrix(h, a, neutral, max_goals, city=city).ravel()
             cum = np.cumsum(mat)
             draws = self.rng.random(n_sims)
             idx = np.searchsorted(cum, draws)
@@ -122,7 +122,7 @@ class Tournament:
 
         for s in range(n_sims):
             sim_results = [(h, a, self._presample[(h, a)][0][s], self._presample[(h, a)][1][s])
-                           for (h, a, _) in rem]
+                           for (h, a, _, _) in rem]
             order = self._group_standings(sim_results)
 
             winners = {L: order[L][0][0] for L in config.GROUPS}
