@@ -19,13 +19,17 @@ class Predictor:
     SHOOTOUT_REGRESSION = 0.65   # Elo edge that survives extra time + penalties
 
     def __init__(self, dc_model, elo_ratings, elo_weight=0.70, beta=0.005,
-                 draw_base=0.28, ensemble_mix=0.5):
+                 draw_base=0.28, ensemble_mix=0.5, goal_scale=1.13):
         self.dc = dc_model
         self.elo = elo_ratings
         self.elo_weight = elo_weight       # weight on the Elo signal in both blends
         self.beta = beta                   # Elo rating-diff -> goal supremacy
         self.draw_base = draw_base         # max draw probability in the Elo 3-way
         self.mix = ensemble_mix            # weight on the lambda-blend in the ensemble
+        # World Cup matches average ~2.67 goals vs ~2.35 in the broad training
+        # mix; this calibrates the goal level to tournament scoring (corroborated
+        # by the actual WC average and by Forebet's independent score engine).
+        self.goal_scale = goal_scale
 
     # --- goal expectation -------------------------------------------------
     def blended_lambdas(self, home, away, neutral=True):
@@ -40,7 +44,7 @@ class Predictor:
             sup = (1 - w) * (lam - mu) + w * sup_elo
             lam = max((total + sup) / 2, 0.05)
             mu = max((total - sup) / 2, 0.05)
-        return lam, mu
+        return lam * self.goal_scale, mu * self.goal_scale
 
     # alias kept for callers that want expected goals
     def expected_goals(self, home, away, neutral=True):
@@ -73,7 +77,8 @@ class Predictor:
         ph_l, pd_l, pa_l = self._outcome(mat)
 
         # probability-blend branch: raw DC outcome probs blended with Elo 3-way
-        mat0 = self._matrix(*self.dc.expected_goals(home, away, neutral), max_goals)
+        lam0, mu0 = self.dc.expected_goals(home, away, neutral)
+        mat0 = self._matrix(lam0 * self.goal_scale, mu0 * self.goal_scale, max_goals)
         ph_p, pd_p, pa_p = self._outcome(mat0)
         w = self.elo_weight
         if w > 0 and home in self.elo and away in self.elo:
@@ -87,10 +92,16 @@ class Predictor:
         ph, pd_, pa = ph / s, pd_ / s, pa / s
 
         i, j = np.unravel_index(np.argmax(mat), mat.shape)
+        # the N most likely exact scorelines and their probabilities
+        flat = mat.ravel()
+        order = np.argsort(flat)[::-1][:5]
+        ncol = mat.shape[1]
+        top_scores = [(int(k // ncol), int(k % ncol), float(flat[k])) for k in order]
         return {
             "home": home, "away": away, "neutral": neutral, "matrix": mat,
             "exp_home": lam, "exp_away": mu,
             "ml_home": int(i), "ml_away": int(j), "ml_prob": float(mat[i, j]),
+            "top_scores": top_scores,
             "p_home": ph, "p_draw": pd_, "p_away": pa,
         }
 

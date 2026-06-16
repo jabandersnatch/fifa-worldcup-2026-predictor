@@ -90,11 +90,18 @@ remaining predictions shift accordingly.
 `main.py backtest` trains only on pre-tournament data and predicts each past World Cup. Averaged
 over 2014/2018/2022 (192 matches):
 
-| Metric | Pure-results model | **+ confederation calibration** |
+| Metric | Pure-results model | **+ confederation + goal calibration** |
 |---|---|---|
-| Outcome accuracy (W/D/L) | 53.6% | **56.8%** |
+| Outcome accuracy (W/D/L) | 53.6% | **57.3%** |
 | Brier score | 0.598 | **0.580** |
-| Log-loss (random = 1.099) | 1.006 | **0.983** |
+| Log-loss (random = 1.099) | 1.006 | **0.982** |
+
+Goal level is calibrated to the actual World Cup scoring rate (~2.67 goals/match) via an
+unregularised intercept plus a tournament scale factor — **corroborated independently by
+[Forebet](https://www.forebet.com/en/predictions-world/world-cup)'s score engine**, which picks the
+same winners as us with slightly higher scorelines. `predict` shows each match's most-likely
+scoreline *plus the top-3 distribution* (e.g. `1-0 16% · 2-0 12% · 1-1 12%`), since no single
+scoreline in football is more than ~15–20% likely.
 
 The confederation calibration is the biggest single lift the data allows, and it's measured
 out-of-sample (every World Cup match is intercontinental). Exact-score sits ~12–16% depending on

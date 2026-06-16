@@ -68,15 +68,15 @@ def cmd_predict(args):
         if r.home_team in config.HOSTS and r.country == r.home_team:
             neutral = False
         p = predictor.predict(r.home_team, r.away_team, neutral=neutral)
+        top3 = " · ".join(f"{h}-{a} {pr*100:.0f}%" for h, a, pr in p["top_scores"][:3])
         rows.append({
             "date": r.date.date(),
             "group": config.TEAM_GROUP.get(r.home_team, "?"),
             "match": f"{r.home_team} vs {r.away_team}",
             "pred_score": f"{p['ml_home']}-{p['ml_away']}",
             "xG": f"{p['exp_home']:.1f}-{p['exp_away']:.1f}",
-            "P(home)": f"{p['p_home']*100:.0f}%",
-            "P(draw)": f"{p['p_draw']*100:.0f}%",
-            "P(away)": f"{p['p_away']*100:.0f}%",
+            "most likely scorelines": top3,
+            "P(H/D/A)": f"{p['p_home']*100:.0f}/{p['p_draw']*100:.0f}/{p['p_away']*100:.0f}",
         })
     out = pd.DataFrame(rows)
     print(tabulate(out, headers="keys", showindex=False, tablefmt="github"))
