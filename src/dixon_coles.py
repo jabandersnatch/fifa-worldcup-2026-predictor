@@ -65,14 +65,17 @@ class DixonColes:
         h00 = (hg == 0); h11 = (hg == 1)
         a00 = (ag == 0); a11 = (ag == 1)
 
-        # Param vector: [attack(n), defence(n), home_adv, rho]
+        # Param vector: [attack(n), defence(n), home_adv, rho, intercept].
+        # The intercept is the log baseline scoring rate; it is NOT regularised,
+        # so the overall goal level fits freely (otherwise ridge shrinks
+        # attack/defence to 0 and forces ~exp(0)=1 goal/side, ~24% too low).
         def unpack(p):
-            return p[:n], p[n:2 * n], p[2 * n], p[2 * n + 1]
+            return p[:n], p[n:2 * n], p[2 * n], p[2 * n + 1], p[2 * n + 2]
 
         def neg_ll(p):
-            atk, dfc, home_adv, rho = unpack(p)
-            log_lam = atk[hi] - dfc[ai] + np.where(neutral, 0.0, home_adv)
-            log_mu = atk[ai] - dfc[hi]
+            atk, dfc, home_adv, rho, base = unpack(p)
+            log_lam = base + atk[hi] - dfc[ai] + np.where(neutral, 0.0, home_adv)
+            log_mu = base + atk[ai] - dfc[hi]
             lam = np.exp(log_lam)
             mu = np.exp(log_mu)
             # log Poisson pmf for home and away goals
@@ -86,30 +89,31 @@ class DixonColes:
             tau = np.clip(tau, 1e-9, None)
             ll = ll + np.log(tau)
             total = np.sum(w * ll)
-            # ridge keeps the attack/defence level identifiable and shrinks
-            # sparse teams toward the mean
+            # ridge keeps attack/defence identifiable and shrinks sparse teams
+            # toward the mean (intercept excluded so the goal level is unbiased)
             penalty = self.ridge * (np.sum(atk ** 2) + np.sum(dfc ** 2))
             return -(total) + penalty
 
-        x0 = np.concatenate([np.zeros(n), np.zeros(n), [0.25], [-0.05]])
-        bounds = [(-3, 3)] * (2 * n) + [(-1, 1), (-0.2, 0.2)]
+        x0 = np.concatenate([np.zeros(n), np.zeros(n), [0.25], [-0.05], [0.3]])
+        bounds = [(-3, 3)] * (2 * n) + [(-1, 1), (-0.2, 0.2), (-1.0, 1.5)]
         res = minimize(neg_ll, x0, method="L-BFGS-B", bounds=bounds,
                        options={"maxiter": 500})
-        atk, dfc, home_adv, rho = unpack(res.x)
-        # center attack for interpretability (level shift is unidentifiable)
+        atk, dfc, home_adv, rho, base = unpack(res.x)
+        # center attack for interpretability (level shift absorbed by intercept)
         atk = atk - atk.mean()
         self.attack = {t: atk[i] for t, i in self.idx.items()}
         self.defence = {t: dfc[i] for t, i in self.idx.items()}
         self.home_adv = float(home_adv)
         self.rho = float(rho)
+        self.intercept = float(base)
         self._fit_result = res
         return self
 
     def expected_goals(self, home, away, neutral=True):
         """Return (lambda_home, mu_away) expected-goal rates."""
         adv = 0.0 if neutral else self.home_adv
-        lam = np.exp(self.attack[home] - self.defence[away] + adv)
-        mu = np.exp(self.attack[away] - self.defence[home])
+        lam = np.exp(self.intercept + self.attack[home] - self.defence[away] + adv)
+        mu = np.exp(self.intercept + self.attack[away] - self.defence[home])
         return float(lam), float(mu)
 
     def score_matrix(self, home, away, neutral=True, max_goals=10):
