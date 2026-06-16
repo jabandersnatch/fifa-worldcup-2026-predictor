@@ -72,6 +72,7 @@ python3 -m venv .venv
 ```bash
 .venv/bin/python main.py refresh      # pull the latest results + goals (run before everything)
 .venv/bin/python main.py predict      # scoreline + W/D/L for upcoming matches -> data/predictions_upcoming.csv
+.venv/bin/python main.py predict --compare-forebet   # show Forebet's score next to ours + agreement %
 .venv/bin/python main.py simulate     # title odds + CI + market + consensus    -> data/simulation_odds.csv
 .venv/bin/python main.py golden-boot  # projected top scorers                   -> data/golden_boot.csv
 .venv/bin/python main.py backtest     # measured accuracy on the 2022 World Cup

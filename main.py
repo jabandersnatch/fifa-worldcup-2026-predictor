@@ -62,27 +62,56 @@ def cmd_predict(args):
                                        squad_weight=args.squad_weight)
     wc = data_loader.wc2026_matches()
     upcoming = wc[~wc["played"]]
+
+    fb = None
+    if args.compare_forebet:
+        from src import forebet
+        try:
+            print("Fetching Forebet predictions for corroboration…", file=sys.stderr)
+            fb = forebet.predictions()
+            print(f"  got {len(fb)} Forebet match predictions.", file=sys.stderr)
+        except Exception as e:                       # network/layout failure
+            print(f"  Forebet unavailable ({e}); showing our model only.", file=sys.stderr)
+
     rows = []
+    agree = total = 0
     for r in upcoming.itertuples(index=False):
         neutral = bool(r.neutral)
         if r.home_team in config.HOSTS and r.country == r.home_team:
             neutral = False
         p = predictor.predict(r.home_team, r.away_team, neutral=neutral)
         top3 = " · ".join(f"{h}-{a} {pr*100:.0f}%" for h, a, pr in p["top_scores"][:3])
-        rows.append({
+        ours = f"{p['ml_home']}-{p['ml_away']}"
+        row = {
             "date": r.date.date(),
             "group": config.TEAM_GROUP.get(r.home_team, "?"),
             "match": f"{r.home_team} vs {r.away_team}",
-            "pred_score": f"{p['ml_home']}-{p['ml_away']}",
+            "ours": ours,
             "xG": f"{p['exp_home']:.1f}-{p['exp_away']:.1f}",
-            "most likely scorelines": top3,
             "P(H/D/A)": f"{p['p_home']*100:.0f}/{p['p_draw']*100:.0f}/{p['p_away']*100:.0f}",
-        })
+        }
+        if fb is not None:
+            from src import forebet
+            fbs = forebet.lookup(fb, r.home_team, r.away_team)
+            row["forebet"] = fbs or "—"
+            if fbs:
+                total += 1
+                # agreement = same result sign (both home win / draw / away win)
+                oh, oa = p["ml_home"], p["ml_away"]
+                fh, fa = (int(x) for x in fbs.split("-"))
+                agree += (oh - oa > 0) == (fh - fa > 0) and (oh == oa) == (fh == fa)
+        else:
+            row["most likely scorelines"] = top3
+        rows.append(row)
+
     out = pd.DataFrame(rows)
     print(tabulate(out, headers="keys", showindex=False, tablefmt="github"))
+    if fb is not None and total:
+        print(f"\nForebet corroboration: same predicted result in {agree}/{total} "
+              f"matches ({agree/total*100:.0f}%).")
     csv = os.path.join(DATA_DIR, "predictions_upcoming.csv")
     out.to_csv(csv, index=False)
-    print(f"\nSaved {len(out)} predictions → {csv}")
+    print(f"Saved {len(out)} predictions → {csv}")
 
 
 def cmd_simulate(args):
@@ -202,6 +231,10 @@ def main():
             sp.add_argument("--sims", type=int, default=50000)
             sp.add_argument("--top", type=int, default=20,
                             help="rows to display")
+        if name == "predict":
+            sp.add_argument("--compare-forebet", action="store_true",
+                            help="pull Forebet's score predictions and show them "
+                                 "next to ours for each match")
         if name == "backtest":
             sp.add_argument("--verbose", action="store_true")
 
