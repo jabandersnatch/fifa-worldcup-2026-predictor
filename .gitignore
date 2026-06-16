@@ -1,0 +1,8 @@
+.venv/
+__pycache__/
+*.pyc
+data/international_results.csv
+data/goalscorers.csv
+data/predictions_upcoming.csv
+data/simulation_odds.csv
+data/golden_boot.csv
