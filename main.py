@@ -70,10 +70,13 @@ def cmd_predict(args):
     lpath = os.path.join(DATA_DIR, "lineups.json")
     if os.path.exists(lpath):
         store = _json.load(open(lpath))
-        for team, xi in store.items():
+        for team, entry in store.items():
             if team.startswith("_"):
                 continue
-            m, missing = lineups.attack_multiplier(team, xi)
+            if isinstance(entry, dict) and "out" in entry:
+                m, missing = lineups.multiplier_from_out(team, entry["out"])
+            else:
+                m, missing = lineups.attack_multiplier(team, entry)
             mults[team] = (m, missing)
             if m < 1.0:
                 miss = ", ".join(f"{n} -{s*100:.0f}%" for n, s in missing)

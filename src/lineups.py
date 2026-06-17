@@ -18,9 +18,14 @@ PRIMARY = 0.10      # only a missing PRIMARY scorer (>=10% of goals) downgrades 
                     # depth scorers rotating out of the XI is normal, not a downgrade
 
 
-def _norm(name):
+def _tokens(name):
     s = unicodedata.normalize("NFKD", name).encode("ascii", "ignore").decode().lower()
-    return set(p for p in s.replace("-", " ").split() if len(p) > 2)
+    return [p for p in s.replace("-", " ").split() if len(p) > 2 and p != "al"]
+
+
+def _surname(name):
+    t = _tokens(name)
+    return t[-1] if t else ""
 
 
 def player_shares(team, since="2023-01-01"):
@@ -32,21 +37,27 @@ def player_shares(team, since="2023-01-01"):
     return {} if total == 0 else (counts / total).to_dict()
 
 
-def _in_xi(scorer, xi_tokens):
-    toks = _norm(scorer)
-    return any(toks & t for t in xi_tokens)        # shared surname token
+def _from_missing(shares, missing_surnames):
+    """Multiplier from the set of surnames that are NOT available (primary only)."""
+    missing = [(p, sh) for p, sh in shares.items()
+               if sh >= PRIMARY and _surname(p) in missing_surnames]
+    lost = sum(sh for _, sh in missing)
+    return max(MIN_MULT, 1.0 - DAMP * lost), sorted(missing, key=lambda x: -x[1])
 
 
 def attack_multiplier(team, starting_xi, since="2023-01-01"):
-    """Multiplier (<=1) on `team`'s attack given who starts. 1.0 = full strength."""
+    """Multiplier (<=1) on `team`'s attack given who STARTS (surname match)."""
     shares = player_shares(team, since)
     if not shares:
         return 1.0, []
-    xi_tokens = [_norm(p) for p in starting_xi]
-    # only a missing PRIMARY scorer downgrades the attack
-    missing = [(p, sh) for p, sh in shares.items()
-               if sh >= PRIMARY and not _in_xi(p, xi_tokens)]
-    lost = sum(sh for _, sh in missing)
-    mult = max(MIN_MULT, 1.0 - DAMP * lost)
-    notable = sorted(missing, key=lambda x: -x[1])
-    return mult, notable
+    xi_surnames = {_surname(p) for p in starting_xi}
+    return _from_missing(shares, {_surname(p) for p in shares if _surname(p) not in xi_surnames})
+
+
+def multiplier_from_out(team, out_players, since="2023-01-01"):
+    """Multiplier (<=1) given an explicit list of OUT/injured players (surname
+    match) — cleaner than a full XI when you just know who is unavailable."""
+    shares = player_shares(team, since)
+    if not shares:
+        return 1.0, []
+    return _from_missing(shares, {_surname(p) for p in out_players})

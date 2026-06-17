@@ -1,4 +1,5 @@
 {
-  "_comment": "Confirmed/expected starting XIs, team -> list of players. Used by `predict` to downgrade a team's attack if a PRIMARY goal-scorer (>=10% of recent goals) is not starting. Edit as lineups are announced (~1h pre-match).",
-  "Argentina": ["Emiliano Martinez", "Molina", "Romero", "Lisandro Martinez", "Tagliafico", "De Paul", "Mac Allister", "Enzo Fernandez", "Messi", "Lautaro", "Alvarez"]
+  "_comment": "team -> either a starting XI (list of players) OR {\"out\": [injured/suspended players]}. `predict` downgrades a team's attack if a PRIMARY scorer (>=10% of recent goals) is missing. Edit as lineups/injuries are announced.",
+  "Argentina": ["Emiliano Martinez", "Molina", "Romero", "Lisandro Martinez", "Tagliafico", "De Paul", "Mac Allister", "Enzo Fernandez", "Messi", "Lautaro", "Alvarez"],
+  "Jordan": {"out": ["Yazan Al-Naimat"]}
 }
