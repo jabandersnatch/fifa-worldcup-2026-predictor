@@ -70,8 +70,11 @@ WC_TEAMS = [team for teams in GROUPS.values() for team in teams]
 # and a blended-consensus signal. Sourced from FOX/CBS/Squawka after Spain's
 # opening draw with Cape Verde shuffled the board. Includes the bookmaker margin.
 MARKET_ODDS_AMERICAN = {
-    "France": 430, "Spain": 500, "Portugal": 600, "England": 650,
-    "Brazil": 850, "Argentina": 1000, "Germany": 1400,
+    # updated June 16 2026 (post matchday 2): France clear favourite after a 3-1
+    # win over Senegal; Spain eased after the Cape Verde draw; Portugal moved
+    # ahead of England; USA jumped after beating Paraguay 4-1.
+    "France": 420, "Spain": 550, "Portugal": 600, "England": 700,
+    "Brazil": 850, "Argentina": 900, "Germany": 1400, "United States": 2600,
 }
 
 
