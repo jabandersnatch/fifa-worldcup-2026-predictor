@@ -1,5 +1,9 @@
 {
   "_comment": "team -> either a starting XI (list of players) OR {\"out\": [injured/suspended players]}. `predict` downgrades a team's attack if a PRIMARY scorer (>=10% of recent goals) is missing. Edit as lineups/injuries are announced.",
-  "Argentina": ["Emiliano Martinez", "Molina", "Romero", "Lisandro Martinez", "Tagliafico", "De Paul", "Mac Allister", "Enzo Fernandez", "Messi", "Lautaro", "Alvarez"],
-  "Jordan": {"out": ["Yazan Al-Naimat"]}
+  "_argentina_note": "Confirmed XI vs Algeria 2026-06-16 was a 4-4-2 (Messi+Lautaro both started => attack x1.00). NOTE: to model Lautaro being benched, use {\"out\":[\"Lautaro Martinez\"]} — the XI-list matcher misses him because surname 'Martinez' collides with Lisandro/Emiliano Martinez who stay in the XI.",
+  "_r32_injury_note": "Confirmed R32 absences recorded for documentation. Neither changes the model: Schlotterbeck is a defender (attack-only model ignores him) and Diego Gomez is not a PRIMARY scorer (>=10% of recent goals), so both multipliers stay x1.00.",
+  "Argentina": ["Emiliano Martinez", "Montiel", "Romero", "Lisandro Martinez", "Medina", "De Paul", "Enzo Fernandez", "Mac Allister", "Almada", "Messi", "Lautaro Martinez"],
+  "Jordan": {"out": ["Yazan Al-Naimat"]},
+  "Germany": {"out": ["Nico Schlotterbeck"]},
+  "Paraguay": {"out": ["Diego Gomez"]}
 }
