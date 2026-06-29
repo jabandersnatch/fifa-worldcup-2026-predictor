@@ -113,14 +113,31 @@ SQUAD_VALUE_MEUR = {
     "Curaçao": 25.78, "Iraq": 21.2, "Jordan": 20.3, "Qatar": 19.93,
 }
 
-# Bookmaker Golden Boot / top-scorer odds (American), mid-June 2026, FOX Sports.
+# Bookmaker Golden Boot / top-scorer odds (American), June 29 2026 — post-group-stage
+# snapshot (FOX Sports / Kalshi), reconciled to the verified internet consensus.
+# Messi (6 goals) is now the clear favourite; Mbappé/Haaland/Vinícius/Dembélé sit on 4.
 # Player names use the goalscorer-dataset spelling so they join cleanly.
+#   [V] = odds verified from sources (FOX: Messi -105, Mbappé +280, Dembélé +1200).
+#   [E] = current-form estimate anchored to those (goal tally + role + expected run).
 GOLDEN_BOOT_ODDS_AMERICAN = {
-    "Kylian Mbappé": 550, "Harry Kane": 600, "Kai Havertz": 950, "Erling Haaland": 1300,
-    "Julián Alvarez": 1600, "Lionel Messi": 1700, "Mikel Oyarzabal": 1900,
-    "Cristiano Ronaldo": 2000, "Folarin Balogun": 2200, "Vinícius Júnior": 2200,
-    "Lamine Yamal": 3000, "Michael Olise": 3000, "Raphinha": 3500,
-    "Jamal Musiala": 3500, "Lautaro Martínez": 4500,
+    "Lionel Messi": -105,        # [V] FOX favourite, 6 goals
+    "Kylian Mbappé": 280,        # [V] FOX second favourite, 4 goals
+    "Erling Haaland": 700,       # [E] 4 goals
+    "Vinícius Júnior": 700,      # [E] 4 goals, deep run
+    "Harry Kane": 650,           # [E] 3 goals, penalties + deep run
+    "Ousmane Dembélé": 1200,     # [V] FOX, 4 goals (was missing entirely)
+    "Kai Havertz": 1400,         # [E] 2 goals
+    "Matheus Cunha": 2200,       # [E] 3 goals
+    "Mikel Oyarzabal": 1800,     # [E] 2 goals, deep run
+    "Cristiano Ronaldo": 2500,   # [E] 2 goals
+    "Julián Alvarez": 2500,      # [E] 0 goals, Argentina deep run
+    "Folarin Balogun": 2800,     # [E] 2 goals
+    "Lamine Yamal": 2500,        # [E] 1 goal, deep run
+    "Michael Olise": 4000,       # [E]
+    "Raphinha": 3000,            # [E]
+    "Jamal Musiala": 3500,       # [E]
+    "Deniz Undav": 5000,         # [E] 3 goals
+    "Lautaro Martínez": 4000,    # [E]
 }
 GOLDEN_BOOT_PROB = {p: _american_to_prob(o) for p, o in GOLDEN_BOOT_ODDS_AMERICAN.items()}
 
